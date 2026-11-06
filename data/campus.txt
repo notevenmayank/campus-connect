@@ -1,0 +1,22 @@
+canteen	MainGate	50
+block C	canteen	50
+Block D	block C	40
+Block D	MainGate	120
+block E(Nursing Block)	block C	85
+Block D	block E(Nursing Block)	45
+nescafe	block E(Nursing Block)	30
+mess/DS	block E(Nursing Block)	40
+OAT	mess/DS	30
+nescafe	OAT	20
+MainGate	Block A	70
+library	Block A	20
+Block A	mess/DS	75
+Block A	OAT	25
+MainGate	library	90
+MainGate	block C	60
+MainGate	block E(Nursing Block)	400
+MainGate	nescafe	100
+MainGate	mess/DS	130
+block C	Block A	90
+Block D	Block A	80
+block E(Nursing Block)	Block A	120

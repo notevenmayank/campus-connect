@@ -1,0 +1,50 @@
+2026-10-31 08:50:11	system	Added pathway between MainGate and block E(Nursing Block) (110m)
+2026-10-31 08:50:31	system	Added pathway between MainGate and nescafe (100m)
+2026-10-31 08:50:46	system	Added pathway between MainGate and mess/DS (130m)
+2026-10-31 08:51:15	system	Added pathway between block C and Block A (90m)
+2026-10-31 08:51:29	system	Added pathway between Block D and Block A (80m)
+2026-10-31 08:51:45	system	Added pathway between block E(Nursing Block) and Block A (120m)
+2026-10-31 08:52:29	system	Updated pathway between MainGate and block E(Nursing Block) (400m)
+2026-10-31 08:54:27	resource	Added resource D002 (Seminar Hall A)
+2026-10-31 08:55:14	resource	Added resource E202 (Computer Lab 6)
+2026-10-31 08:55:47	resource	Added resource D006 (Class)
+2026-10-31 08:56:10	resource	Added resource C101 (Class)
+2026-10-31 09:21:20	resource	Added resource A101 (Admin Block)
+2026-10-31 10:26:39	system	Server started, data loaded from files (5 resources, 0 bookings)
+2026-10-31 10:39:20	system	Server started, data loaded from files (5 resources, 0 bookings)
+2026-10-31 10:41:48	system	Admin locked and saved campus layout positions
+2026-10-31 10:45:36	system	Admin locked and saved campus layout positions
+2026-10-31 10:53:13	system	Admin locked and saved campus layout positions
+2026-10-31 12:04:13	system	Admin locked and saved campus layout positions
+2026-10-31 12:30:34	system	Admin locked and saved campus layout positions
+2026-10-31 12:30:37	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:08	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:12	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:14	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:17	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:19	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:21	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:24	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:27	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:30	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:34	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:37	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:40	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:43	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:47	system	Admin locked and saved campus layout positions
+2026-10-31 12:33:50	system	Admin locked and saved campus layout positions
+2026-10-31 12:34:39	booking	mayank (Student) booked Admin Block on 2026-10-31 8AM
+2026-11-06 15:39:36	system	Server started, data loaded from files (5 resources, 1 bookings)
+2026-11-06 16:15:07	system	Server started, data loaded from files (5 resources, 1 bookings)
+2026-11-06 16:52:21	resource	Added resource R001 (E2E Test Lab)
+2026-11-06 18:00:28	resource	Added resource R002 (E2E Test Lab)
+2026-11-06 18:00:28	booking	Student Alice (Student) booked E2E Test Lab on 2026-11-20 10AM
+2026-11-06 18:00:28	waitlist	Dr. Faculty Bob (Faculty) waitlisted #1 for E2E Test Lab 2026-11-20 10AM
+2026-11-06 18:00:28	waitlist	Robotics Club (Club) waitlisted #2 for E2E Test Lab 2026-11-20 10AM
+2026-11-06 18:00:28	cancel	Cancelled booking of Student Alice. Dr. Faculty Bob (Faculty) promoted to CONFIRMED.
+2026-11-06 18:00:28	undo	Undone: booking by Student Alice restored.
+2026-11-06 18:00:28	cancel	Cancelled booking of Student Alice. Dr. Faculty Bob (Faculty) promoted to CONFIRMED.
+2026-11-06 18:00:28	cancel	Cancelled booking of Dr. Faculty Bob. Robotics Club (Club) promoted to CONFIRMED.
+2026-11-06 18:04:16	resource	Deleted resource R001
+2026-11-06 18:09:46	cancel	Cancelled booking of Robotics Club.
+2026-11-06 18:09:46	resource	Deleted resource R002

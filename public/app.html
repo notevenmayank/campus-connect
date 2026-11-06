@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CampusConnect — Room booking for GEHU</title>
+  <link rel="icon" type="image/png" href="gehu-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+  <!-- Top Bar (Persistent Header) -->
+  <header class="topbar">
+    <a href="index.html" class="topbar-brand" title="Back to CampusConnect Landing Page">
+      <img class="brand-icon" src="gehu-logo.png" alt="GEHU Logo">
+      <div class="brand-name">
+        <span>CampusConnect</span>
+        <span class="brand-tag">GEHU</span>
+      </div>
+    </a>
+
+    <nav class="nav-tabs" id="navTabs">
+      <div class="nav-tab active" data-target="dashboard">Dashboard</div>
+      <div class="nav-tab" data-target="resources">Resources</div>
+      <div class="nav-tab" data-target="book">Book</div>
+      <div class="nav-tab" data-target="bookings">Bookings</div>
+      <div class="nav-tab" data-target="waitlist">Waitlist</div>
+      <div class="nav-tab" data-target="map">Campus Map</div>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="health-dot-pill" id="healthPill" title="Server Status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="healthText">Server online</span>
+      </div>
+
+      <button id="undoBtn" class="btn-undo" title="Undo recent action" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 7v6h6"></path>
+          <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"></path>
+        </svg>
+        <span>Undo</span>
+        <span id="undoBadge" class="undo-badge">(0)</span>
+        <div id="undoTooltip" class="undo-tooltip"></div>
+      </button>
+
+      <div class="profile-chip" id="profileChip" title="Click to edit profile">
+        <div class="profile-avatar" id="profileAvatar">A</div>
+        <div class="profile-name" id="profileDisplayName">Alex (Student)</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="app-container">
+
+    <!-- ===================================================================
+         1. DASHBOARD SECTION (#dashboard)
+         =================================================================== -->
+    <section class="section active" id="dashboard">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h1>Today on campus</h1>
+          <p class="section-subtitle">Live numbers from the booking system.</p>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-primary" id="dashBookBtn">Book a room</button>
+          <button class="btn btn-secondary" id="dashAddResBtn">Add a room</button>
+          <button class="btn btn-secondary" id="dashRouteBtn">Find route</button>
+        </div>
+      </div>
+
+      <!-- Single Stats Panel (5 Columns with thin dividers) -->
+      <div class="stats-panel">
+        <div class="stat-col">
+          <div class="stat-lbl">ROOMS</div>
+          <div class="stat-val" id="dashStatResources">--</div>
+          <div class="stat-sub">Labs, halls and offices</div>
+        </div>
+        <div class="stat-col">
+          <div class="stat-lbl">BOOKED</div>
+          <div class="stat-val" id="dashStatBookings">--</div>
+          <div class="stat-sub">Confirmed for upcoming slots</div>
+        </div>
+        <div class="stat-col">
+          <div class="stat-lbl">WAITING</div>
+          <div class="stat-val" id="dashStatWaitlisted">--</div>
+          <div class="stat-sub">In line for a taken room</div>
+        </div>
+        <div class="stat-col">
+          <div class="stat-lbl">PLACES ON MAP</div>
+          <div class="stat-val" id="dashStatVenues">--</div>
+          <div class="stat-sub">Blocks and buildings</div>
+        </div>
+        <div class="stat-col">
+          <div class="stat-lbl">CAN UNDO</div>
+          <div class="stat-val" id="dashStatUndo">--</div>
+          <div class="stat-sub">Recent actions you can reverse</div>
+        </div>
+      </div>
+
+      <!-- Split: Charts & Activity Feed -->
+      <div class="dashboard-split">
+        <!-- Breakdown Charts -->
+        <div class="card-box">
+          <div class="card-box-header">
+            <h2 class="card-box-title">Where bookings are going</h2>
+          </div>
+          <div style="margin-bottom: 24px;">
+            <div style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px;">Rooms by type</div>
+            <div id="chartCategoryContainer">
+              <div class="empty-state">Loading room stats...</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px;">Bookings by who booked</div>
+            <div id="chartRoleContainer">
+              <div class="empty-state">Loading booking stats...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="card-box">
+          <div class="card-box-header">
+            <h2 class="card-box-title">Recent activity</h2>
+            <button class="btn btn-secondary btn-sm" id="refreshActivityBtn">Refresh</button>
+          </div>
+          <div class="activity-feed" id="activityFeed">
+            <div class="empty-state">Loading recent activity...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         2. RESOURCES SECTION (#resources)
+         =================================================================== -->
+    <section class="section" id="resources">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h1>Rooms</h1>
+          <p class="section-subtitle">Find and view rooms on campus.</p>
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-primary" id="openAddResourceModalBtn">+ Add room</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <!-- Search & Filter Toolbar -->
+        <div class="table-toolbar">
+          <div class="toolbar-filters">
+            <input type="text" id="resSearchInput" class="form-input" placeholder="Search name or ID..." style="width: 200px;">
+            <select id="resCategoryFilter" class="form-select" style="min-width: 140px;">
+              <option value="">All Categories</option>
+            </select>
+            <select id="resSortFilter" class="form-select" style="min-width: 130px;">
+              <option value="id">Sort by ID</option>
+              <option value="name">Sort by Name</option>
+              <option value="capacity">Sort by Capacity</option>
+            </select>
+          </div>
+          <div class="toolbar-filters">
+            <input type="text" id="resLookupInput" class="form-input" placeholder="Room ID..." style="width: 120px;">
+            <button class="btn btn-secondary btn-sm" id="resLookupBtn">Lookup</button>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <table class="data-table" id="resourcesTable">
+          <thead>
+            <tr>
+              <th style="width: 110px;">ROOM ID</th>
+              <th>NAME</th>
+              <th style="width: 130px;">TYPE</th>
+              <th style="width: 180px;">PLACE</th>
+              <th style="width: 110px;">CAPACITY</th>
+              <th style="width: 220px;">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody id="resourcesTableBody">
+            <tr><td colspan="6" class="empty-state">Loading rooms...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         3. BOOK A SLOT SECTION (#book)
+         =================================================================== -->
+    <section class="section" id="book">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h1>Book a room</h1>
+          <p class="section-subtitle">Pick a room and date to see available slots.</p>
+        </div>
+      </div>
+
+      <div class="book-layout">
+        <!-- Booking Form Card -->
+        <div class="book-form-card">
+          <div class="form-group">
+            <label class="form-label" for="bookResourceSelect">Room</label>
+            <select id="bookResourceSelect" class="form-select">
+              <option value="">Select Room...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="bookDateInput">Date</label>
+            <input type="date" id="bookDateInput" class="form-input">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="bookSlotDisplay">Selected slot</label>
+            <input type="text" id="bookSlotDisplay" class="form-input" readonly value="Pick a slot on the right">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="bookUserName">Full name</label>
+            <input type="text" id="bookUserName" class="form-input" placeholder="Your name">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="bookUserRole">Role</label>
+            <select id="bookUserRole" class="form-select">
+              <option value="Faculty">Faculty (Priority 1)</option>
+              <option value="Club">Club (Priority 2)</option>
+              <option value="Student" selected>Student (Priority 3)</option>
+            </select>
+          </div>
+
+          <div class="book-rule-note">
+            If a room is taken, you join the waitlist. Faculty requests are served first, then Club, then Student.
+          </div>
+
+          <button id="bookActionBtn" class="btn btn-primary" style="width: 100%;" disabled>
+            Select a slot
+          </button>
+
+          <!-- Result card for confirmation or waitlist placement -->
+          <div id="bookingResultBox" class="booking-result-box">
+            <div id="bookingResultTitle" class="result-title"></div>
+            <div id="bookingResultDesc" class="result-desc"></div>
+            <div id="bookingResultActions" style="display: flex; gap: 8px;"></div>
+          </div>
+        </div>
+
+        <!-- Slot Grid Card -->
+        <div class="slot-grid-container">
+          <div class="slot-grid-header">
+            <div>
+              <h2>Available time slots</h2>
+              <p style="font-size: 13px; color: var(--text-dim); margin-top: 2px;">10 slots from 8:00 AM to 5:00 PM. Click to select.</p>
+            </div>
+            <div class="slot-legend">
+              <div style="color: var(--status-confirmed);">● FREE</div>
+              <div style="color: var(--text-dim);">● BOOKED</div>
+            </div>
+          </div>
+
+          <div class="slot-grid" id="slotsGrid">
+            <div style="grid-column: 1/-1;" class="empty-state">
+              Pick a room and date to view time slots.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         4. BOOKINGS SECTION (#bookings)
+         =================================================================== -->
+    <section class="section" id="bookings">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h1>Bookings</h1>
+          <p class="section-subtitle">All confirmed bookings across campus.</p>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <!-- Filters Toolbar -->
+        <div class="table-toolbar">
+          <div class="toolbar-filters">
+            <select id="bookingsResourceFilter" class="form-select" style="min-width: 150px;">
+              <option value="">All Rooms</option>
+            </select>
+            <input type="date" id="bookingsDateFilter" class="form-input" style="width: 140px;">
+            <input type="text" id="bookingsUserFilter" class="form-input" placeholder="Search person..." style="width: 150px;">
+            <select id="bookingsRoleFilter" class="form-select" style="width: 120px;">
+              <option value="">All Roles</option>
+              <option value="Faculty">Faculty</option>
+              <option value="Club">Club</option>
+              <option value="Student">Student</option>
+            </select>
+            <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; color: var(--text); margin-left: 6px;">
+              <input type="checkbox" id="bookingsMyOnlyToggle"> Only my bookings
+            </label>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="bookingsResetFiltersBtn">Reset</button>
+        </div>
+
+        <!-- Table -->
+        <table class="data-table" id="bookingsTable">
+          <thead>
+            <tr>
+              <th>ROOM</th>
+              <th>PLACE</th>
+              <th>DATE</th>
+              <th>TIME</th>
+              <th>BOOKED BY</th>
+              <th>ROLE</th>
+              <th>WAITING</th>
+              <th>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody id="bookingsTableBody">
+            <tr><td colspan="8" class="empty-state">Loading bookings...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         5. WAITLIST SECTION (#waitlist)
+         =================================================================== -->
+    <section class="section" id="waitlist">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h1>Waitlist</h1>
+          <p class="section-subtitle">See who is in line for taken slots.</p>
+        </div>
+      </div>
+
+      <div class="waitlist-card">
+        <!-- Selector Controls -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; align-items: flex-end;">
+          <div class="form-group" style="margin-bottom: 0; min-width: 200px;">
+            <label class="form-label" for="wlResourceSelect">Room</label>
+            <select id="wlResourceSelect" class="form-select"></select>
+          </div>
+          <div class="form-group" style="margin-bottom: 0; width: 150px;">
+            <label class="form-label" for="wlDateInput">Date</label>
+            <input type="date" id="wlDateInput" class="form-input">
+          </div>
+          <div class="form-group" style="margin-bottom: 0; width: 120px;">
+            <label class="form-label" for="wlSlotSelect">Time slot</label>
+            <select id="wlSlotSelect" class="form-select"></select>
+          </div>
+          <button class="btn btn-primary" id="wlInspectBtn">Inspect waitlist</button>
+        </div>
+
+        <div class="book-rule-note" style="margin-top: 0; margin-bottom: 20px;">
+          Requests are ordered by priority role and time. Faculty comes first, then Club, then Student.
+        </div>
+
+        <!-- Holder Banner -->
+        <div class="waitlist-holder-banner" id="wlHolderBanner">
+          <div>
+            <div style="font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim);">CURRENT SLOT HOLDER</div>
+            <div style="font-size: 16px; font-weight: 500; color: var(--text); margin-top: 4px;" id="wlHolderName">No holder</div>
+          </div>
+          <div id="wlHolderRoleBadge"></div>
+        </div>
+
+        <!-- Queue List -->
+        <h3 style="font-family: var(--font-heading); font-size: 16px; font-weight: 400; color: var(--text); margin-bottom: 12px;">Waiting in line</h3>
+        <div class="queue-list" id="wlQueueList">
+          <div class="empty-state">Select a slot to view waitlist.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================
+         6. CAMPUS MAP SECTION (#map)
+         =================================================================== -->
+    <section class="section" id="map">
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <h1>Campus map</h1>
+          <p class="section-subtitle">Find walking routes between buildings on campus.</p>
+        </div>
+        <div class="section-actions">
+          <a href="https://gehu.ac.in/bhimtal/campus-tour/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+            <span>Take a 360° tour ↗</span>
+          </a>
+          <button class="btn btn-secondary" id="toggleMapEditBtn">
+            <span id="mapEditBtnText">Edit map</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Map Editor Control Banner -->
+      <div class="map-editor-banner" id="mapEditorBanner" style="display: none;">
+        <div>
+          <span class="editor-badge">ADMIN MODE</span>
+          <span style="font-size: 13px; color: var(--text-dim);">Drag buildings to reposition. When finished, click <b>"Save layout"</b> to fix.</span>
+        </div>
+        <div class="editor-banner-actions">
+          <button class="btn btn-primary btn-sm" id="editorSavePositionsBtn">Save layout</button>
+          <button class="btn btn-secondary btn-sm" id="editorAddVenueBtn">+ Add building</button>
+          <button class="btn btn-secondary btn-sm" id="editorAddEdgeBtn">+ Add pathway</button>
+          <button class="btn btn-secondary btn-sm" id="editorLockExitBtn">Lock and exit</button>
+          <button class="btn btn-danger btn-sm" id="editorResetCampusBtn">Reset layout</button>
+        </div>
+      </div>
+
+      <div class="map-layout">
+        <!-- Control Card -->
+        <div class="map-control-card">
+          <h2 style="font-family: var(--font-heading); font-size: 17px; font-weight: 400; color: var(--text); margin-bottom: 16px;">Find walking route</h2>
+
+          <div class="form-group">
+            <label class="form-label" for="routeFromSelect">Starting place</label>
+            <select id="routeFromSelect" class="form-select"></select>
+          </div>
+
+          <button class="route-swap-btn" id="routeSwapBtn" title="Swap direction">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"></path>
+            </svg>
+          </button>
+
+          <div class="form-group">
+            <label class="form-label" for="routeToSelect">Destination place</label>
+            <select id="routeToSelect" class="form-select"></select>
+          </div>
+
+          <button class="btn btn-primary" id="findRouteBtn" style="width: 100%;">
+            Find route
+          </button>
+
+          <!-- Route Result Box -->
+          <div class="route-result-box" id="routeResultBox">
+            <div class="route-summary" id="routeSummary">--</div>
+            <div class="route-path-steps" id="routePathSteps">--</div>
+          </div>
+
+          <!-- Venue Resources Drawer -->
+          <div class="venue-resources-card" id="venueResourcesCard">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h3 style="font-family: var(--font-heading); font-size: 15px; font-weight: 400; color: var(--text);" id="venueCardTitle">Building details</h3>
+              <button style="color: var(--text-dim); cursor: pointer; font-size: 18px;" id="closeVenueCardBtn">&times;</button>
+            </div>
+            <div id="venueResourcesList" style="font-size: 13px; display: flex; flex-direction: column; gap: 8px;"></div>
+            <div id="venueEditActions" style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); display: none;">
+              <button class="btn btn-danger btn-sm" id="venueDeleteBtn" style="width: 100%;">Delete building</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SVG Map Container -->
+        <div class="map-canvas-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+            <div style="font-size: 13.5px; color: var(--text-dim);" id="mapCanvasHint">Click a building to see its rooms</div>
+            <div style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim);">DISTANCES IN METRES</div>
+          </div>
+          <svg class="campus-svg" id="campusSvg" viewBox="0 0 720 480" style="user-select: none;">
+            <!-- Edges and nodes injected by JS -->
+          </svg>
+        </div>
+      </div>
+
+      <!-- Campus Infrastructure Manager Section -->
+      <div class="card-box" style="margin-top: 24px;" id="campusInfrastructureCard">
+        <div class="card-box-header">
+          <h2 class="card-box-title">Campus buildings and pathways</h2>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" id="infraAddVenueBtn">+ Add building</button>
+            <button class="btn btn-secondary btn-sm" id="infraAddPathBtn">+ Add pathway</button>
+          </div>
+        </div>
+        <div class="campus-infra-grid">
+          <div>
+            <div style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;">Registered buildings</div>
+            <div id="infraVenuesList" style="max-height: 280px; overflow-y: auto;"></div>
+          </div>
+          <div>
+            <div style="font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px;">Walking distances</div>
+            <div id="infraEdgesList" style="max-height: 280px; overflow-y: auto;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================
+       MODALS
+       =================================================================== -->
+  <!-- 1. Add Resource Modal -->
+  <div class="modal-overlay" id="addResourceModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Add a room</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <form id="addResourceForm">
+        <div class="form-group">
+          <label class="form-label" for="addResId">Room ID (optional)</label>
+          <input type="text" id="addResId" class="form-input" placeholder="e.g. R006 (leave blank for auto)">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addResName">Room name *</label>
+          <input type="text" id="addResName" class="form-input" placeholder="e.g. Physics Lab" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addResCategory">Type *</label>
+          <select id="addResCategory" class="form-select" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addResLocation">Building / Place *</label>
+          <select id="addResLocation" class="form-select" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addResCapacity">Capacity *</label>
+          <input type="number" id="addResCapacity" class="form-input" placeholder="e.g. 50" min="1" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Save room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Edit Resource Modal -->
+  <div class="modal-overlay" id="editResourceModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit room <span id="editResIdTitle" style="color: var(--accent);"></span></h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <form id="editResourceForm">
+        <input type="hidden" id="editResId">
+        <div class="form-group">
+          <label class="form-label" for="editResName">Name</label>
+          <input type="text" id="editResName" class="form-input">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editResCategory">Type</label>
+          <select id="editResCategory" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editResLocation">Building / Place</label>
+          <select id="editResLocation" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editResCapacity">Capacity</label>
+          <input type="number" id="editResCapacity" class="form-input" min="1">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Profile Modal -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">My profile</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="profileNameInput">Full name</label>
+        <input type="text" id="profileNameInput" class="form-input" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="profileRoleSelect">Role</label>
+        <select id="profileRoleSelect" class="form-select">
+          <option value="Administrator">Administrator</option>
+          <option value="Faculty">Faculty</option>
+          <option value="Club">Club</option>
+          <option value="Student">Student</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button type="button" class="btn btn-primary" id="saveProfileBtn">Save profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Confirmation Dialog Modal -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="confirmTitle">Confirm action</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <p id="confirmMessage" style="font-size: 13.5px; color: var(--text); line-height: 1.5; margin-bottom: 20px;"></p>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+        <button type="button" class="btn btn-danger" id="confirmActionBtn">Proceed</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Add Venue / Building Modal -->
+  <div class="modal-overlay" id="addVenueModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Add building</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <form id="addVenueForm">
+        <div class="form-group">
+          <label class="form-label" for="newVenueName">Building name *</label>
+          <input type="text" id="newVenueName" class="form-input" placeholder="e.g. Block E, Cafeteria" required>
+        </div>
+        <div style="border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 16px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--text); margin-bottom: 10px;">
+            <input type="checkbox" id="venueConnectToggle"> Connect immediately with a pathway
+          </label>
+          <div id="venueConnectFields" style="display: none;">
+            <div class="form-group" style="margin-bottom: 10px;">
+              <label class="form-label" for="newVenueConnectTo">Connect to building</label>
+              <select id="newVenueConnectTo" class="form-select"></select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label" for="newVenueConnectDist">Walking distance (metres)</label>
+              <input type="number" id="newVenueConnectDist" class="form-input" placeholder="e.g. 100" min="10">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Add building</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Add Pathway Modal -->
+  <div class="modal-overlay" id="addEdgeModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 class="modal-title">Add pathway</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <form id="addEdgeForm">
+        <div class="form-group">
+          <label class="form-label" for="edgeFromSelect">From building</label>
+          <select id="edgeFromSelect" class="form-select" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edgeToSelect">To building</label>
+          <select id="edgeToSelect" class="form-select" required></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="edgeDistanceInput">Walking distance in metres *</label>
+          <input type="number" id="edgeDistanceInput" class="form-input" placeholder="e.g. 120" min="5" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary">Save pathway</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. Admin Passcode Verification Modal -->
+  <div class="modal-overlay" id="adminPasscodeModal">
+    <div class="modal-box" style="max-width: 440px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Admin verification</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
+      </div>
+      <p style="font-size: 13.5px; color: var(--text-dim); line-height: 1.5; margin-bottom: 16px;">
+        The campus map layout is fixed. Only an authorized administrator can rearrange buildings or pathways.
+      </p>
+      <form id="adminPasscodeForm">
+        <div class="form-group">
+          <label class="form-label" for="adminPasscodeInput">Admin passcode *</label>
+          <input type="password" id="adminPasscodeInput" class="form-input" placeholder="Enter admin passcode" autocomplete="current-password" required>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-bottom: 18px;">
+          Passcode: <span style="color: var(--accent);">admin123</span>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="adminUnlockSubmitBtn">Unlock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+</body>
+</html>

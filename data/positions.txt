@@ -1,0 +1,10 @@
+Block A	204	428
+Block D	348	52
+MainGate	30	319
+OAT	400	310
+block C	224	65
+block E(Nursing Block)	456	65
+canteen	88	169
+library	285	434
+mess/DS	554	267
+nescafe	402	219

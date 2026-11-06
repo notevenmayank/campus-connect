@@ -1,0 +1,5 @@
+E202	Computer Lab 6	Lab	block E(Nursing Block)	80
+C101	Class	Hall	block C	70
+D002	Seminar Hall A	Hall	Block D	140
+D006	Class	Hall	Block D	50
+A101	Admin Block	Admin	Block A	50

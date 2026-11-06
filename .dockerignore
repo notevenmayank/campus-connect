@@ -1,0 +1,6 @@
+.git
+.gemini
+*.exe
+scratch
+node_modules
+*.log
