@@ -2,7 +2,9 @@
  * CampusConnect — Complete Client Logic
  * Interacts directly with C++ REST API (server.cpp)
  */
-const API = location.port === "8080" ? "/api" : "http://localhost:8080/api";
+const API = (location.hostname === "localhost" && location.port && location.port !== "8080")
+  ? "http://localhost:8080/api"
+  : "/api";
 
 // State
 let metaData = { slots: [], categories: [], roles: [], venues: [], nextId: "" };

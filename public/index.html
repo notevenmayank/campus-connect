@@ -1117,7 +1117,9 @@
 
   // Live Stats Integration from C++ Backend (/api/stats)
   (function () {
-    const API = location.port === "8080" ? "/api" : "http://localhost:8080/api";
+    const API = (location.hostname === "localhost" && location.port && location.port !== "8080")
+      ? "http://localhost:8080/api"
+      : "/api";
     function loadStats() {
       fetch(API + "/stats")
         .then(function (r) { return r.json(); })
