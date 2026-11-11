@@ -30,6 +30,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Polling intervals
   scheduleNextHealthCheck(100);
+
+  // Auto-show Authentication window when entering app or if not logged in
+  const urlParams = new URLSearchParams(window.location.search);
+  const forceAuth = urlParams.get("auth") === "1" || urlParams.get("login") === "1";
+  const isLoggedIn = sessionStorage.getItem("cc_logged_in") === "true";
+  if (forceAuth || !isLoggedIn) {
+    setTimeout(openAuthModal, 150);
+  }
 });
 
 /* =====================================================================
@@ -199,33 +207,91 @@ function updateProfileDisplay() {
   updateAdminAuthUI();
 }
 
-function saveProfile() {
+function openAuthModal() {
+  updateAdminAuthUI();
+  switchAuthTab(isAdminAuthenticated ? "admin" : "member");
+  openModal("authModal");
+}
+
+function switchAuthTab(tab) {
+  const memberBtn = document.getElementById("tabMemberSignInBtn");
+  const adminBtn = document.getElementById("tabAdminSignInBtn");
+  const memberForm = document.getElementById("memberAuthForm");
+  const adminForm = document.getElementById("adminAuthForm");
+
+  if (tab === "admin") {
+    if (memberBtn) memberBtn.className = "btn btn-sm btn-secondary";
+    if (adminBtn) adminBtn.className = "btn btn-sm btn-primary";
+    if (memberForm) memberForm.style.display = "none";
+    if (adminForm) adminForm.style.display = "block";
+    const passcode = document.getElementById("profileAdminPasscode");
+    if (passcode) setTimeout(() => passcode.focus(), 60);
+  } else {
+    if (memberBtn) memberBtn.className = "btn btn-sm btn-primary";
+    if (adminBtn) adminBtn.className = "btn btn-sm btn-secondary";
+    if (memberForm) memberForm.style.display = "block";
+    if (adminForm) adminForm.style.display = "none";
+  }
+}
+
+function handleMemberAuthSubmit(e) {
+  if (e) e.preventDefault();
   const nameInput = document.getElementById("profileNameInput");
   const name = (nameInput ? nameInput.value.trim() : "") || "Mayank";
   const roleSelect = document.getElementById("profileRoleSelect");
   const role = roleSelect ? roleSelect.value : "Student";
 
-  if (role === "Administrator" && !isAdminAuthenticated) {
-    closeAllModals();
-    const input = document.getElementById("adminPasscodeInput");
-    if (input) input.value = "";
-    openModal("adminPasscodeModal");
-    return;
-  }
-
   currentProfile = { name, role };
+  isAdminAuthenticated = false;
+  isMapEditMode = false;
+  sessionStorage.setItem("cc_logged_in", "true");
+  localStorage.setItem("cc_logged_in", "true");
+  localStorage.removeItem("cc_admin_authenticated");
+  sessionStorage.removeItem("cc_admin_authenticated");
+  localStorage.setItem("cc_user_profile", JSON.stringify(currentProfile));
+
+  updateProfileDisplay();
+  updateMapEditorUI();
+  closeAllModals();
+  showToast(`Signed in as ${name} (${role})`, "success");
+}
+
+function handleAdminAuthSubmit(e) {
+  if (e) e.preventDefault();
+  const passcode = (document.getElementById("profileAdminPasscode")?.value || "").trim();
+  if (verifyAdminPasscode(passcode)) {
+    sessionStorage.setItem("cc_logged_in", "true");
+    localStorage.setItem("cc_logged_in", "true");
+  }
+}
+
+function handleLogout() {
+  sessionStorage.removeItem("cc_logged_in");
+  localStorage.removeItem("cc_logged_in");
+  sessionStorage.removeItem("cc_admin_authenticated");
+  localStorage.removeItem("cc_admin_authenticated");
+  isAdminAuthenticated = false;
+  isMapEditMode = false;
+  currentProfile = { name: "Mayank", role: "Student" };
   localStorage.setItem("cc_user_profile", JSON.stringify(currentProfile));
   updateProfileDisplay();
-  closeAllModals();
-  showToast(`Profile updated: ${name} (${role})`, "info");
+  updateMapEditorUI();
+  showToast("Logged out successfully.", "info");
+  openAuthModal();
+}
+
+function saveProfile() {
+  handleMemberAuthSubmit();
 }
 
 function verifyAdminPasscode(passcode) {
   if (passcode === ADMIN_PASSCODE) {
     isAdminAuthenticated = true;
+    sessionStorage.setItem("cc_logged_in", "true");
+    localStorage.setItem("cc_logged_in", "true");
     localStorage.setItem("cc_admin_authenticated", "true");
     sessionStorage.setItem("cc_admin_authenticated", "true");
-    currentProfile.role = "Administrator";
+    currentProfile = { name: "Administrator", role: "Administrator" };
     localStorage.setItem("cc_user_profile", JSON.stringify(currentProfile));
     isMapEditMode = true;
     updateAdminAuthUI();
@@ -235,7 +301,7 @@ function verifyAdminPasscode(passcode) {
     showToast("Admin verified! Campus layout editing unlocked.", "success");
     return true;
   } else {
-    showToast("Incorrect passcode! Only admin can edit the campus map.", "error");
+    showToast("Incorrect passcode! Default: admin123", "error");
     return false;
   }
 }
@@ -245,12 +311,13 @@ function logoutAdmin() {
   localStorage.removeItem("cc_admin_authenticated");
   sessionStorage.removeItem("cc_admin_authenticated");
   isMapEditMode = false;
-  currentProfile.role = "Student";
+  currentProfile = { name: "Mayank", role: "Student" };
   localStorage.setItem("cc_user_profile", JSON.stringify(currentProfile));
   updateAdminAuthUI();
   updateProfileDisplay();
   updateMapEditorUI();
-  showToast("Admin logged out. Switched back to Student role.", "info");
+  showToast("Switched back to Student member role.", "info");
+  switchAuthTab("member");
 }
 
 /* =====================================================================
@@ -2049,7 +2116,10 @@ function handleNodeClick(venueName) {
    MODAL CONTROLLER & DIALOGS
    ==================================================================== */
 function openModal(id) {
-  const m = document.getElementById(id);
+  let m = document.getElementById(id);
+  if (!m && (id === "profileModal" || id === "authModal")) {
+    m = document.getElementById("authModal") || document.getElementById("profileModal");
+  }
   if (m) m.classList.add("open");
 }
 
@@ -2080,25 +2150,13 @@ function showConfirm(title, message, onConfirm) {
    ===================================================================== */
 function initEventListeners() {
   // Top bar & Profile / Authentication
-  const handleOpenAuth = () => {
-    updateAdminAuthUI();
-    openModal("profileModal");
-  };
-  document.getElementById("openAuthModalBtn")?.addEventListener("click", handleOpenAuth);
-  document.getElementById("profileChip")?.addEventListener("click", handleOpenAuth);
-  document.getElementById("saveProfileBtn")?.addEventListener("click", saveProfile);
+  document.getElementById("topbarLogoutBtn")?.addEventListener("click", handleLogout);
+  document.getElementById("profileChip")?.addEventListener("click", openAuthModal);
+  document.getElementById("tabMemberSignInBtn")?.addEventListener("click", () => switchAuthTab("member"));
+  document.getElementById("tabAdminSignInBtn")?.addEventListener("click", () => switchAuthTab("admin"));
+  document.getElementById("memberAuthForm")?.addEventListener("submit", handleMemberAuthSubmit);
+  document.getElementById("adminAuthForm")?.addEventListener("submit", handleAdminAuthSubmit);
   document.getElementById("randomizeNameBtn")?.addEventListener("click", randomizeStudentName);
-  document.getElementById("profileAdminLoginBtn")?.addEventListener("click", () => {
-    const code = document.getElementById("profileAdminPasscode").value.trim();
-    verifyAdminPasscode(code);
-  });
-  document.getElementById("profileAdminPasscode")?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const code = document.getElementById("profileAdminPasscode").value.trim();
-      verifyAdminPasscode(code);
-    }
-  });
   document.getElementById("profileAdminLogoutBtn")?.addEventListener("click", logoutAdmin);
 
   // Edit Booking Modal
