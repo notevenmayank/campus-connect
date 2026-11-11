@@ -957,6 +957,59 @@ int main(int argc, char** argv) {
         ok(res, msg, extra);
     });
 
+    // POST /api/bookings/edit  {oldResId, oldDate, oldSlot, newResId, newDate, newSlot, user?, role?}
+    auto editBookingHandler = [](const httplib::Request& req, httplib::Response& res) {
+        lock_guard<mutex> g(mtx);
+        auto m = parseJson(req.body);
+        string oldId = toUpper(trim(m["oldResId"])), oldDate = trim(m["oldDate"]), oldSlot = toUpper(trim(m["oldSlot"]));
+        string newId = toUpper(trim(m["newResId"])), newDate = trim(m["newDate"]), newSlot = toUpper(trim(m["newSlot"]));
+        string user = trim(m["user"]), role = normRole(m["role"]);
+
+        if (newId.empty()) newId = oldId;
+        if (newDate.empty()) newDate = oldDate;
+        if (newSlot.empty()) newSlot = oldSlot;
+
+        if (!resources.get(oldId)) return fail(res, 404, "Original resource not found");
+        if (!resources.get(newId)) return fail(res, 404, "Destination resource not found");
+        if (!validDate(newDate)) return fail(res, 400, "Date must be YYYY-MM-DD");
+        if (newSlot.empty()) return fail(res, 400, "Time slot is required");
+
+        string oldKey = slotKey(oldId, oldDate, oldSlot);
+        string newKey = slotKey(newId, newDate, newSlot);
+
+        Booking* cur = bookings.get(oldKey);
+        if (!cur) return fail(res, 404, "Original booking not found");
+
+        if (user.empty()) user = cur->user;
+        if (role.empty()) role = cur->role;
+
+        if (oldKey != newKey) {
+            Booking* dest = bookings.get(newKey);
+            if (dest) return fail(res, 409, "Target slot is already booked by " + dest->user);
+        }
+
+        bookings.remove(oldKey);
+
+        MinHeap<Booking>* oldH = waitlists.get(oldKey);
+        if (oldH && !oldH->empty()) {
+            auto promoted = oldH->extractMin();
+            bookings.put(oldKey, promoted.data);
+            logAct("booking", promoted.data.user + " (" + promoted.data.role + ") promoted to CONFIRMED for vacated slot " + oldId + " " + oldDate + " " + oldSlot);
+        }
+
+        Booking updated{newId, newDate, newSlot, user, role};
+        bookings.put(newKey, updated);
+
+        Resource* newR = resources.get(newId);
+        string logMsg = user + " updated booking to " + (newR ? newR->name : newId) + " on " + newDate + " " + newSlot;
+        logAct("booking", logMsg);
+        saveAll();
+
+        ok(res, "Booking updated successfully", string("\"booking\":") + jBook(updated));
+    };
+    svr.Post("/api/bookings/edit", editBookingHandler);
+    svr.Put("/api/bookings", editBookingHandler);
+
     // POST /api/undo   (pops the Stack)
     svr.Post("/api/undo", [](const httplib::Request&, httplib::Response& res) {
         lock_guard<mutex> g(mtx);

@@ -37,19 +37,9 @@
         <span id="healthText">Server online</span>
       </div>
 
-      <button id="undoBtn" class="btn-undo" title="Undo recent action" disabled>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 7v6h6"></path>
-          <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"></path>
-        </svg>
-        <span>Undo</span>
-        <span id="undoBadge" class="undo-badge">(0)</span>
-        <div id="undoTooltip" class="undo-tooltip"></div>
-      </button>
-
-      <div class="profile-chip" id="profileChip" title="Click to edit profile">
-        <div class="profile-avatar" id="profileAvatar">A</div>
-        <div class="profile-name" id="profileDisplayName">Alex (Student)</div>
+      <div class="profile-chip" id="profileChip" title="Click to edit profile & authentication">
+        <div class="profile-avatar" id="profileAvatar">M</div>
+        <div class="profile-name" id="profileDisplayName">Mayank (Student)</div>
       </div>
     </div>
   </header>
@@ -96,9 +86,9 @@
           <div class="stat-sub">Blocks and buildings</div>
         </div>
         <div class="stat-col">
-          <div class="stat-lbl">CAN UNDO</div>
-          <div class="stat-val" id="dashStatUndo">--</div>
-          <div class="stat-sub">Recent actions you can reverse</div>
+          <div class="stat-lbl">MY BOOKINGS</div>
+          <div class="stat-val" id="dashStatMyBookings">--</div>
+          <div class="stat-sub">Active reservations for you</div>
         </div>
       </div>
 
@@ -562,30 +552,111 @@
     </div>
   </div>
 
-  <!-- 3. Profile Modal -->
-  <div class="modal-overlay" id="profileModal">
+  <!-- 3. Edit Booking Modal -->
+  <div class="modal-overlay" id="editBookingModal">
     <div class="modal-box">
       <div class="modal-header">
-        <h2 class="modal-title">My profile</h2>
+        <h2 class="modal-title">Edit booking</h2>
         <button class="modal-close" data-close-modal>&times;</button>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="profileNameInput">Full name</label>
-        <input type="text" id="profileNameInput" class="form-input" placeholder="Your name">
+      <form id="editBookingForm">
+        <input type="hidden" id="editBookingOldResId">
+        <input type="hidden" id="editBookingOldDate">
+        <input type="hidden" id="editBookingOldSlot">
+
+        <div style="background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px;">
+          <div style="font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; color: var(--accent); letter-spacing: 0.05em; margin-bottom: 4px;">Current Booking</div>
+          <div id="editBookingSummaryText" style="font-size: 13.5px; color: var(--text); font-weight: 500;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editBookingResSelect">Change Room / Resource</label>
+          <select id="editBookingResSelect" class="form-select" required></select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editBookingDateInput">Date</label>
+          <input type="date" id="editBookingDateInput" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="editBookingSlotSelect">Time Slot</label>
+          <select id="editBookingSlotSelect" class="form-select" required></select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="editBookingUser">Booked by</label>
+            <input type="text" id="editBookingUser" class="form-input" readonly style="opacity: 0.85;">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label class="form-label" for="editBookingRole">Role</label>
+            <input type="text" id="editBookingRole" class="form-input" readonly style="opacity: 0.85;">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+          <button type="submit" class="btn btn-primary" id="editBookingSubmitBtn">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Profile & Authentication Modal -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Profile & Authentication</h2>
+        <button class="modal-close" data-close-modal>&times;</button>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="profileRoleSelect">Role</label>
-        <select id="profileRoleSelect" class="form-select">
-          <option value="Administrator">Administrator</option>
-          <option value="Faculty">Faculty</option>
-          <option value="Club">Club</option>
-          <option value="Student">Student</option>
-        </select>
+
+      <div style="margin-bottom: 20px;">
+        <div style="font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; color: var(--accent); letter-spacing: 0.06em; margin-bottom: 10px;">User Profile</div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" for="profileNameInput" style="margin: 0;">Full name</label>
+            <button type="button" class="btn btn-secondary btn-sm" id="randomizeNameBtn" style="padding: 3px 8px; font-size: 11.5px;">🎲 Random name</button>
+          </div>
+          <input type="text" id="profileNameInput" class="form-input" placeholder="Your name" value="Mayank">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label" for="profileRoleSelect">Role</label>
+          <select id="profileRoleSelect" class="form-select">
+            <option value="Student">Student</option>
+            <option value="Club">Club</option>
+            <option value="Faculty">Faculty</option>
+            <option value="Administrator">Administrator</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-primary" id="saveProfileBtn" style="width: 100%;">Save profile</button>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-        <button type="button" class="btn btn-primary" id="saveProfileBtn">Save profile</button>
+
+      <div style="border-top: 1px solid var(--border); padding-top: 18px;">
+        <div style="font-size: 11px; font-family: var(--font-mono); text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.06em; margin-bottom: 8px;">Admin Security & Map Permissions</div>
+        
+        <div id="adminAuthStatusBox" style="background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px;">
+          <div id="adminLockedState">
+            <p style="font-size: 12.5px; color: var(--text-dim); line-height: 1.45; margin-bottom: 10px;">
+              Admin access unlocks rearranging campus buildings, dragging nodes on the map, and creating pathways.
+            </p>
+            <div style="display: flex; gap: 8px;">
+              <input type="password" id="profileAdminPasscode" class="form-input" placeholder="Admin passcode (admin123)" style="flex: 1; font-size: 13px;">
+              <button type="button" class="btn btn-secondary" id="profileAdminLoginBtn" style="white-space: nowrap;">Unlock Admin</button>
+            </div>
+          </div>
+          <div id="adminUnlockedState" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <span style="color: var(--accent); font-weight: 600; font-size: 13px;">● Admin Mode Active</span>
+                <p style="font-size: 12px; color: var(--text-dim); margin: 3px 0 0;">Map editing & drag permissions unlocked.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="profileAdminLogoutBtn">Logout Admin</button>
+            </div>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
 

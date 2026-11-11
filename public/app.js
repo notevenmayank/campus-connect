@@ -9,7 +9,11 @@ const API = (location.hostname === "localhost" && location.port && location.port
 // State
 let metaData = { slots: [], categories: [], roles: [], venues: [], nextId: "" };
 let allResources = [];
-let currentProfile = { name: "Alex", role: "Student" };
+let isAdminAuthenticated = localStorage.getItem("cc_admin_authenticated") === "true" || sessionStorage.getItem("cc_admin_authenticated") === "true";
+let isMapEditMode = false;
+let currentProfile = { name: "Mayank", role: isAdminAuthenticated ? "Administrator" : "Student" };
+const ADMIN_PASSCODE = "admin123";
+const RANDOM_NAMES = ["Mayank", "Aarav", "Priya", "Rohan", "Ananya", "Ishaan", "Sneha", "Vikram", "Neha", "Aditya", "Kabir", "Diya", "Tanvi", "Arjun"];
 let selectedSlotData = null; // { resId, date, slot, status, holder, waitlistCount }
 let lastRoutePath = [];
 let graphData = { nodes: [], edges: [] };
@@ -26,9 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Polling intervals
   setInterval(checkHealth, 10000);
-  setInterval(checkUndoStatus, 10000);
   checkHealth();
-  checkUndoStatus();
 });
 
 /* =====================================================================
@@ -87,58 +89,50 @@ async function checkHealth() {
   }
 }
 
-async function checkUndoStatus() {
-  const undoBtn = document.getElementById("undoBtn");
-  const undoBadge = document.getElementById("undoBadge");
-  const undoTooltip = document.getElementById("undoTooltip");
-
-  try {
-    const res = await fetch(`${API}/undo/peek`);
-    const data = await res.json();
-    if (data.available && data.count > 0) {
-      undoBtn.disabled = false;
-      undoBadge.textContent = `(${data.count})`;
-      const b = data.booking || {};
-      const actionName = data.type === "booking" ? "Undo booking" : "Undo cancellation";
-      undoTooltip.textContent = `${actionName} by ${b.user || "User"} (${b.resId || ""}, ${b.date || ""} ${b.slot || ""})`;
-    } else {
-      undoBtn.disabled = true;
-      undoBadge.textContent = "(0)";
-      undoTooltip.textContent = "Nothing to undo";
-    }
-  } catch {
-    undoBtn.disabled = true;
-    undoBadge.textContent = "(0)";
-    undoTooltip.textContent = "Nothing to undo";
-  }
-}
-
-async function handleUndoClick() {
-  try {
-    const res = await fetch(`${API}/undo`, { method: "POST" });
-    const data = await res.json();
-    if (res.ok && data.ok) {
-      showToast(data.message, "success");
-      refreshAll();
-    } else {
-      showToast(data.error || "Cannot undo", "error");
-    }
-  } catch (err) {
-    showToast("Network error performing undo", "error");
-  }
-}
-
 /* =====================================================================
-   USER PROFILE
+   USER PROFILE & AUTHENTICATION
    ===================================================================== */
 function initProfile() {
   const saved = localStorage.getItem("cc_user_profile");
   if (saved) {
     try {
       currentProfile = JSON.parse(saved);
+      if (!currentProfile.name || currentProfile.name.toLowerCase() === "alex") {
+        currentProfile.name = "Mayank";
+      }
     } catch {}
   }
+  if (currentProfile.role === "Administrator" && !isAdminAuthenticated) {
+    currentProfile.role = "Student";
+  } else if (isAdminAuthenticated) {
+    currentProfile.role = "Administrator";
+  }
   updateProfileDisplay();
+  updateAdminAuthUI();
+}
+
+function randomizeStudentName() {
+  const available = RANDOM_NAMES.filter(n => n.toLowerCase() !== (currentProfile.name || "").toLowerCase());
+  const picked = available[Math.floor(Math.random() * available.length)] || "Mayank";
+  const nameInput = document.getElementById("profileNameInput");
+  if (nameInput) nameInput.value = picked;
+  return picked;
+}
+
+function updateAdminAuthUI() {
+  const lockedState = document.getElementById("adminLockedState");
+  const unlockedState = document.getElementById("adminUnlockedState");
+  const passcodeField = document.getElementById("profileAdminPasscode");
+  if (lockedState && unlockedState) {
+    if (isAdminAuthenticated) {
+      lockedState.style.display = "none";
+      unlockedState.style.display = "block";
+    } else {
+      lockedState.style.display = "block";
+      unlockedState.style.display = "none";
+      if (passcodeField) passcodeField.value = "";
+    }
+  }
 }
 
 function updateProfileDisplay() {
@@ -149,10 +143,10 @@ function updateProfileDisplay() {
 
   const isAdmin = currentProfile.role === "Administrator" && isAdminAuthenticated;
 
-  if (avatar) avatar.textContent = (currentProfile.name || "U")[0].toUpperCase();
+  if (avatar) avatar.textContent = (currentProfile.name || "M")[0].toUpperCase();
   if (nameDisplay) {
     nameDisplay.innerHTML = isAdmin
-      ? `${escapeHtml(currentProfile.name)} <span style="color: var(--accent); font-weight: 500;">(Admin)</span>`
+      ? `${escapeHtml(currentProfile.name)} <span style="color: var(--accent); font-weight: 600;">(Admin)</span>`
       : `${escapeHtml(currentProfile.name)} (${escapeHtml(currentProfile.role)})`;
   }
   if (nameInput) nameInput.value = currentProfile.name;
@@ -163,11 +157,16 @@ function updateProfileDisplay() {
   const bookRole = document.getElementById("bookUserRole");
   if (bookName && !bookName.value) bookName.value = currentProfile.name;
   if (bookRole) bookRole.value = currentProfile.role === "Administrator" ? "Faculty" : currentProfile.role;
+
+  updateAdminAuthUI();
 }
 
 function saveProfile() {
-  const name = document.getElementById("profileNameInput").value.trim() || "User";
-  const role = document.getElementById("profileRoleSelect").value;
+  const nameInput = document.getElementById("profileNameInput");
+  const name = (nameInput ? nameInput.value.trim() : "") || "Mayank";
+  const roleSelect = document.getElementById("profileRoleSelect");
+  const role = roleSelect ? roleSelect.value : "Student";
+
   if (role === "Administrator" && !isAdminAuthenticated) {
     closeAllModals();
     const input = document.getElementById("adminPasscodeInput");
@@ -175,11 +174,45 @@ function saveProfile() {
     openModal("adminPasscodeModal");
     return;
   }
+
   currentProfile = { name, role };
   localStorage.setItem("cc_user_profile", JSON.stringify(currentProfile));
   updateProfileDisplay();
   closeAllModals();
   showToast(`Profile updated: ${name} (${role})`, "info");
+}
+
+function verifyAdminPasscode(passcode) {
+  if (passcode === ADMIN_PASSCODE) {
+    isAdminAuthenticated = true;
+    localStorage.setItem("cc_admin_authenticated", "true");
+    sessionStorage.setItem("cc_admin_authenticated", "true");
+    currentProfile.role = "Administrator";
+    localStorage.setItem("cc_user_profile", JSON.stringify(currentProfile));
+    isMapEditMode = true;
+    updateAdminAuthUI();
+    updateProfileDisplay();
+    updateMapEditorUI();
+    closeAllModals();
+    showToast("Admin verified! Campus layout editing unlocked.", "success");
+    return true;
+  } else {
+    showToast("Incorrect passcode! Only admin can edit the campus map.", "error");
+    return false;
+  }
+}
+
+function logoutAdmin() {
+  isAdminAuthenticated = false;
+  localStorage.removeItem("cc_admin_authenticated");
+  sessionStorage.removeItem("cc_admin_authenticated");
+  isMapEditMode = false;
+  currentProfile.role = "Student";
+  localStorage.setItem("cc_user_profile", JSON.stringify(currentProfile));
+  updateAdminAuthUI();
+  updateProfileDisplay();
+  updateMapEditorUI();
+  showToast("Admin logged out. Switched back to Student role.", "info");
 }
 
 /* =====================================================================
@@ -237,7 +270,6 @@ function handleHashChange() {
 function refreshAll() {
   loadDashboard();
   loadResources();
-  checkUndoStatus();
 }
 
 /* =====================================================================
@@ -314,11 +346,26 @@ async function loadDashboard() {
     const res = await fetch(`${API}/stats`);
     const s = await res.json();
 
-    document.getElementById("dashStatResources").textContent = s.resources ?? 0;
-    document.getElementById("dashStatBookings").textContent = s.bookings ?? 0;
-    document.getElementById("dashStatWaitlisted").textContent = s.waitlisted ?? 0;
-    document.getElementById("dashStatVenues").textContent = s.venues ?? 0;
-    document.getElementById("dashStatUndo").textContent = s.undoAvailable ?? 0;
+    const elRes = document.getElementById("dashStatResources");
+    const elBk = document.getElementById("dashStatBookings");
+    const elWl = document.getElementById("dashStatWaitlisted");
+    const elVn = document.getElementById("dashStatVenues");
+    const elMy = document.getElementById("dashStatMyBookings");
+
+    if (elRes) elRes.textContent = s.resources ?? 0;
+    if (elBk) elBk.textContent = s.bookings ?? 0;
+    if (elWl) elWl.textContent = s.waitlisted ?? 0;
+    if (elVn) elVn.textContent = s.venues ?? 0;
+
+    if (elMy) {
+      try {
+        const myRes = await fetch(`${API}/bookings?user=${encodeURIComponent(currentProfile.name)}`);
+        const myB = await myRes.json();
+        elMy.textContent = Array.isArray(myB) ? myB.length : 0;
+      } catch {
+        elMy.textContent = "0";
+      }
+    }
 
     // Render Resources by Category chart
     renderBarChart("chartCategoryContainer", s.resourcesByCategory, s.resources, "fill-vermilion");
@@ -877,7 +924,6 @@ async function handleBookAction() {
 
         resultActions.innerHTML = `
           <button class="btn btn-secondary btn-sm" onclick="routeToVenue('${venue}')">Show route to venue</button>
-          <button class="btn btn-secondary btn-sm" onclick="handleUndoClick()">Undo</button>
         `;
       } else if (data.status === "waitlisted") {
         resultBox.className = "booking-result-box waitlisted";
@@ -889,7 +935,6 @@ async function handleBookAction() {
       }
 
       loadSlots();
-      checkUndoStatus();
       loadDashboard();
     } else {
       // 409 or other errors: "You already hold this slot"
@@ -954,6 +999,7 @@ async function loadBookings() {
         <td>${b.waitlistCount > 0 ? `<span style="color: var(--status-waitlisted); font-family: var(--font-mono); font-size: 12px;">${b.waitlistCount} waiting</span>` : '<span style="color: var(--text-dim); font-family: var(--font-mono); font-size: 12px;">0</span>'}</td>
         <td>
           <div class="table-actions">
+            <button class="btn btn-secondary btn-sm" onclick="openEditBookingModal('${b.resId}', '${b.date}', '${b.slot}', '${escapeHtml(b.user)}', '${escapeHtml(b.role)}')">Edit</button>
             <button class="btn btn-danger btn-sm" onclick="cancelBooking('${b.resId}', '${b.date}', '${b.slot}')">Cancel</button>
             <button class="btn btn-secondary btn-sm" onclick="viewWaitlistForSlot('${b.resId}', '${b.date}', '${b.slot}')">Waitlist</button>
             <button class="btn btn-secondary btn-sm" onclick="routeToVenue('${b.location}')">Route</button>
@@ -963,6 +1009,112 @@ async function loadBookings() {
     `).join("");
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: #ff6b64;">Error loading bookings.</td></tr>`;
+  }
+}
+
+function openEditBookingModal(resId, date, slot, user, role) {
+  const modal = document.getElementById("editBookingModal");
+  if (!modal) return;
+
+  document.getElementById("editBookingOldResId").value = resId;
+  document.getElementById("editBookingOldDate").value = date;
+  document.getElementById("editBookingOldSlot").value = slot;
+
+  const summary = document.getElementById("editBookingSummaryText");
+  if (summary) {
+    summary.textContent = `${resId} · ${date} · ${slot} (Booked by ${user})`;
+  }
+
+  const resSelect = document.getElementById("editBookingResSelect");
+  if (resSelect) {
+    resSelect.innerHTML = allResources.map(r => `
+      <option value="${r.id}" ${r.id === resId ? "selected" : ""}>
+        ${r.id} — ${escapeHtml(r.name)} (${escapeHtml(r.location)}) [Cap: ${r.capacity}]
+      </option>
+    `).join("");
+  }
+
+  const dateInput = document.getElementById("editBookingDateInput");
+  if (dateInput) {
+    dateInput.value = date;
+    dateInput.min = new Date().toISOString().split("T")[0];
+  }
+
+  const slotSelect = document.getElementById("editBookingSlotSelect");
+  const slots = (metaData && metaData.slots && metaData.slots.length > 0)
+    ? metaData.slots
+    : ["09:00-10:00", "10:00-11:00", "11:00-12:00", "14:00-15:00", "15:00-16:00"];
+
+  if (slotSelect) {
+    slotSelect.innerHTML = slots.map(s => `
+      <option value="${s}" ${s === slot ? "selected" : ""}>${s}</option>
+    `).join("");
+  }
+
+  const userInput = document.getElementById("editBookingUser");
+  const roleInput = document.getElementById("editBookingRole");
+  if (userInput) userInput.value = user;
+  if (roleInput) roleInput.value = role;
+
+  openModal("editBookingModal");
+}
+
+async function handleEditBookingSubmit(e) {
+  e.preventDefault();
+  const oldResId = document.getElementById("editBookingOldResId").value;
+  const oldDate = document.getElementById("editBookingOldDate").value;
+  const oldSlot = document.getElementById("editBookingOldSlot").value;
+
+  const newResId = document.getElementById("editBookingResSelect").value;
+  const newDate = document.getElementById("editBookingDateInput").value;
+  const newSlot = document.getElementById("editBookingSlotSelect").value;
+  const user = document.getElementById("editBookingUser").value;
+  const role = document.getElementById("editBookingRole").value;
+
+  if (oldResId === newResId && oldDate === newDate && oldSlot === newSlot) {
+    showToast("No changes made to booking.", "info");
+    closeAllModals();
+    return;
+  }
+
+  const submitBtn = document.getElementById("editBookingSubmitBtn");
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Updating...";
+  }
+
+  try {
+    const res = await fetch(`${API}/bookings/edit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        oldResId,
+        oldDate,
+        oldSlot,
+        newResId,
+        newDate,
+        newSlot,
+        user,
+        role
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      showToast(data.message || `Booking updated to ${newResId} (${newDate} ${newSlot})!`, "success");
+      closeAllModals();
+      loadBookings();
+      loadDashboard();
+      if (typeof loadSlots === "function") loadSlots();
+    } else {
+      showToast(data.error || "Failed to update booking. Target slot may already be reserved.", "error");
+    }
+  } catch (err) {
+    showToast("Network error updating booking", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Save changes";
+    }
   }
 }
 
@@ -985,7 +1137,6 @@ function cancelBooking(resId, date, slot) {
             showToast(data.message, "success");
           }
           loadBookings();
-          checkUndoStatus();
           loadDashboard();
         } else {
           showToast(data.error || "Failed to cancel booking", "error");
@@ -1058,10 +1209,6 @@ async function inspectWaitlist() {
 /* =====================================================================
    6. CAMPUS MAP, ROUTING & EDITING
    ===================================================================== */
-let isMapEditMode = false;
-let isAdminAuthenticated = sessionStorage.getItem("cc_admin_authenticated") === "true";
-const ADMIN_PASSCODE = "admin123";
-
 let pendingClickPos = null; // {x, y} when user double-clicks canvas
 let draggingNode = null;     // {name, startX, startY, origX, origY, hasMoved}
 let selectedVenueForAction = null;
@@ -1304,22 +1451,6 @@ function toggleMapEditMode() {
   }
   isMapEditMode = !isMapEditMode;
   updateMapEditorUI();
-}
-
-function verifyAdminPasscode(passcode) {
-  if (passcode === ADMIN_PASSCODE) {
-    isAdminAuthenticated = true;
-    sessionStorage.setItem("cc_admin_authenticated", "true");
-    isMapEditMode = true;
-    closeAllModals();
-    updateMapEditorUI();
-    updateProfileDisplay();
-    showToast("Admin verified! Campus layout editing unlocked.", "success");
-    return true;
-  } else {
-    showToast("Incorrect passcode! Only admin can edit the campus map.", "error");
-    return false;
-  }
 }
 
 function lockMapEditor() {
@@ -1899,10 +2030,28 @@ function showConfirm(title, message, onConfirm) {
    EVENT LISTENERS & BINDINGS
    ===================================================================== */
 function initEventListeners() {
-  // Top bar
-  document.getElementById("undoBtn")?.addEventListener("click", handleUndoClick);
-  document.getElementById("profileChip")?.addEventListener("click", () => openModal("profileModal"));
+  // Top bar & Profile
+  document.getElementById("profileChip")?.addEventListener("click", () => {
+    updateAdminAuthUI();
+    openModal("profileModal");
+  });
   document.getElementById("saveProfileBtn")?.addEventListener("click", saveProfile);
+  document.getElementById("randomizeNameBtn")?.addEventListener("click", randomizeStudentName);
+  document.getElementById("profileAdminLoginBtn")?.addEventListener("click", () => {
+    const code = document.getElementById("profileAdminPasscode").value.trim();
+    verifyAdminPasscode(code);
+  });
+  document.getElementById("profileAdminPasscode")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const code = document.getElementById("profileAdminPasscode").value.trim();
+      verifyAdminPasscode(code);
+    }
+  });
+  document.getElementById("profileAdminLogoutBtn")?.addEventListener("click", logoutAdmin);
+
+  // Edit Booking Modal
+  document.getElementById("editBookingForm")?.addEventListener("submit", handleEditBookingSubmit);
 
   // Dashboard quick actions
   document.getElementById("dashBookBtn")?.addEventListener("click", () => { window.location.hash = "book"; });
