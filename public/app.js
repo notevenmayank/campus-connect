@@ -29,8 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Polling intervals
-  setInterval(checkHealth, 10000);
-  checkHealth();
+  scheduleNextHealthCheck(100);
 });
 
 /* =====================================================================
@@ -68,25 +67,60 @@ function showToast(message, type = "info") {
 }
 
 /* =====================================================================
-   HEALTH & UNDO STATUS (Top Bar)
+   HEALTH STATUS (Top Bar) & COLD-START RECOVERY
    ===================================================================== */
+let serverIsOnline = false;
+let consecutiveHealthFailures = 0;
+let healthTimer = null;
+
 async function checkHealth() {
   const dot = document.getElementById("statusDot");
   const text = document.getElementById("healthText");
+  if (!dot || !text) return false;
+
   try {
-    const res = await fetch(`${API}/health`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`${API}/health`, { signal: controller.signal, cache: "no-store" });
+    clearTimeout(timeoutId);
     const data = await res.json();
-    if (data.ok) {
-      dot.className = "status-dot online";
+
+    if (res.ok && data.ok) {
+      const wasOffline = !serverIsOnline && consecutiveHealthFailures > 0;
+      serverIsOnline = true;
+      consecutiveHealthFailures = 0;
+      dot.className = "status-dot";
       text.textContent = "Server online";
+
+      // If waking up from cold start or brief disconnection, reload views
+      if (wasOffline) {
+        showToast("Connected to server!", "success");
+        handleHashChange();
+      }
+      scheduleNextHealthCheck(10000);
+      return true;
+    } else {
+      throw new Error("Health check non-ok");
+    }
+  } catch (err) {
+    serverIsOnline = false;
+    consecutiveHealthFailures++;
+    if (consecutiveHealthFailures <= 6) {
+      dot.className = "status-dot waking";
+      text.textContent = "Waking server...";
     } else {
       dot.className = "status-dot offline";
       text.textContent = "Server offline";
     }
-  } catch (err) {
-    dot.className = "status-dot offline";
-    text.textContent = "Server offline";
+    // Poll more rapidly while waking up so user gets instant response
+    scheduleNextHealthCheck(2500);
+    return false;
   }
+}
+
+function scheduleNextHealthCheck(delay) {
+  if (healthTimer) clearTimeout(healthTimer);
+  healthTimer = setTimeout(checkHealth, delay);
 }
 
 /* =====================================================================
@@ -1008,7 +1042,18 @@ async function loadBookings() {
       </tr>
     `).join("");
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: #ff6b64;">Error loading bookings.</td></tr>`;
+    if (!serverIsOnline) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" style="text-align:center; padding: 32px 16px; color: var(--text-dim);">
+            <div style="font-weight: 500; color: var(--accent); margin-bottom: 6px;">Waking up server instance...</div>
+            <div style="font-size: 12px; margin-bottom: 12px; opacity: 0.8;">Cloud free-tier instance is resuming. Connecting automatically...</div>
+            <button class="btn btn-secondary btn-sm" onclick="loadBookings()">Retry now</button>
+          </td>
+        </tr>`;
+    } else {
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 24px; color: #ff6b64;">Error loading bookings. <button class="btn btn-secondary btn-sm" onclick="loadBookings()" style="margin-left: 8px;">Retry</button></td></tr>`;
+    }
   }
 }
 
@@ -2080,14 +2125,6 @@ function initEventListeners() {
   document.getElementById("bookingsUserFilter")?.addEventListener("input", debounce(loadBookings, 250));
   document.getElementById("bookingsRoleFilter")?.addEventListener("change", loadBookings);
   document.getElementById("bookingsMyOnlyToggle")?.addEventListener("change", loadBookings);
-  document.getElementById("bookingsResetFiltersBtn")?.addEventListener("click", () => {
-    document.getElementById("bookingsResourceFilter").value = "";
-    document.getElementById("bookingsDateFilter").value = "";
-    document.getElementById("bookingsUserFilter").value = "";
-    document.getElementById("bookingsRoleFilter").value = "";
-    document.getElementById("bookingsMyOnlyToggle").checked = false;
-    loadBookings();
-  });
 
   // Waitlist
   document.getElementById("wlInspectBtn")?.addEventListener("click", inspectWaitlist);

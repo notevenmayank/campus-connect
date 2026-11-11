@@ -185,9 +185,19 @@ button, input, select, textarea {
   height: 6px;
   border-radius: 50%;
   background: var(--status-confirmed);
+  transition: background 0.3s ease;
 }
 .status-dot.offline {
   background: var(--status-cancelled);
+}
+.status-dot.waking {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.85); }
 }
 
 /* Undo Button */
