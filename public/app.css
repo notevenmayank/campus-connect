@@ -1055,8 +1055,9 @@ button, input, select, textarea {
   justify-content: center;
   padding: 20px;
 }
-.modal-overlay.active {
-  display: flex;
+.modal-overlay.active,
+.modal-overlay.open {
+  display: flex !important;
 }
 .modal-box {
   background: var(--bg-card);

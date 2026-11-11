@@ -2120,11 +2120,17 @@ function openModal(id) {
   if (!m && (id === "profileModal" || id === "authModal")) {
     m = document.getElementById("authModal") || document.getElementById("profileModal");
   }
-  if (m) m.classList.add("open");
+  if (m) {
+    m.classList.add("active");
+    m.classList.add("open");
+  }
 }
 
 function closeAllModals() {
-  document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("open"));
+  document.querySelectorAll(".modal-overlay").forEach(m => {
+    m.classList.remove("active");
+    m.classList.remove("open");
+  });
 }
 
 function showConfirm(title, message, onConfirm) {
