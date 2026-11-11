@@ -183,6 +183,10 @@ function updateProfileDisplay() {
       ? `${escapeHtml(currentProfile.name)} <span style="color: var(--accent); font-weight: 600;">(Admin)</span>`
       : `${escapeHtml(currentProfile.name)} (${escapeHtml(currentProfile.role)})`;
   }
+  const authLabel = document.getElementById("topbarAuthLabel");
+  if (authLabel) {
+    authLabel.textContent = isAdmin ? "Admin (Active)" : "Login / Auth";
+  }
   if (nameInput) nameInput.value = currentProfile.name;
   if (roleSelect) roleSelect.value = currentProfile.role;
 
@@ -2075,11 +2079,13 @@ function showConfirm(title, message, onConfirm) {
    EVENT LISTENERS & BINDINGS
    ===================================================================== */
 function initEventListeners() {
-  // Top bar & Profile
-  document.getElementById("profileChip")?.addEventListener("click", () => {
+  // Top bar & Profile / Authentication
+  const handleOpenAuth = () => {
     updateAdminAuthUI();
     openModal("profileModal");
-  });
+  };
+  document.getElementById("openAuthModalBtn")?.addEventListener("click", handleOpenAuth);
+  document.getElementById("profileChip")?.addEventListener("click", handleOpenAuth);
   document.getElementById("saveProfileBtn")?.addEventListener("click", saveProfile);
   document.getElementById("randomizeNameBtn")?.addEventListener("click", randomizeStudentName);
   document.getElementById("profileAdminLoginBtn")?.addEventListener("click", () => {
